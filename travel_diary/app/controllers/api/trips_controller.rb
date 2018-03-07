@@ -9,12 +9,21 @@ end
 def create
   trip = Trip.new(trip_params)
   if Location.where('lower(city) = ?', params["location"]["city"].downcase).length > 0
-    loc = Location.where('lower(city) = ?', params["location"]["city"].downcase).first
-    trip.location_id = loc.id
+    location = Location.where('lower(city) = ?', params["location"]["city"].downcase).first
   else
-    loc = Location.create(city:params["location"]["city"],state:params["location"]["state"],country:params["location"]["country"])
-    trip.location_id = loc.id
+    location = Location.new(city:params["location"]["city"],state:params["location"]["state"],country:params["location"]["country"])
+    url = "https://maps.googleapis.com/maps/api/geocode/json?address=#{location.city}+#{location.state}+#{location.country}&key=AIzaSyAv6zJzukQ3qrRUXJ1fGrHwd-6jq0hb-u0"
+    headers = {Accept:'application/json'}
+    response = RestClient.get(url, headers)
+    body = response.body
+    json = JSON.parse(body)
+    byebug
+    json = json["results"][0]["geometry"]["location"]
+    location.lat = json["lat"]
+    location.long = json["lng"]
+    location.save
   end
+  trip.location_id = location.id
   trip.save
   render json: trip, status: 201
 end
